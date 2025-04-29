@@ -1,0 +1,51 @@
+#### simulate data for linear regression ----
+
+#population parameters
+Nsubjects = 100
+b0 = 0
+b1 = 0.4
+
+#generate data
+height = rnorm(Nsubjects, mean = 170, sd = 20) 
+mu     = b0 + b1*height
+sigma  = 15
+weight = rnorm(Nsubjects, mean = mu, sd = sigma)
+
+df = data.frame(weight = weight, height = height)
+
+#visual inspection
+plot(height, weight)
+
+#recover b0, b1 and sigma
+library(brms)
+f_model = weight ~ 0 + Intercept + height
+get_prior(f_model,df)
+
+myprior = prior(normal(0,100), class = b)
+
+
+model = brms::brm(f_model, 
+                  data = df,
+                  chain = 4,
+                  cores = 4,
+                  warmup = 2000,
+                  iter   = 4000,
+                  prior = myprior,
+                  backend = 'cmdstanr')
+prior_summary(model)
+plot(model)
+bayestestR::describe_posterior(model, rope_range = c(-.1,+.1))
+
+#### manually plot posterior ----
+library(ggdist)
+library(ggplot2)
+library(tidyr)
+library(dplyr)
+params = insight::get_parameters(model)  
+params |>
+  select(b_height) |>
+  ggplot(aes(x = b_height)) +
+  stat_halfeye() +
+  xlim(-1,+1)+
+  ggtitle("posterior for b1")+
+  theme_bw()
